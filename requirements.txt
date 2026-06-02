@@ -1,3 +1,2 @@
-paho-mqtt>=1.6.0
-influxdb-client>=1.44.0
-openai>=1.30.0
+openai
+paho-mqtt

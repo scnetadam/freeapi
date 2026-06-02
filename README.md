@@ -1,17 +1,16 @@
-# GitHub Models 免费物联网方案 Demo
+# GitHub Models Free IoT Demo
 
-此仓库演示如何在 **GitHub Actions** 中使用 **GitHub Models**（免费额度）完成完整的物联网数据管道代码生成。
+本仓库演示如何使用 GitHub Models（免费）生成物联网数据平台技术方案、商业分析、架构图和示例代码。
 
-## 目录
-- `generate_code.py`：调用 GitHub Models 生成 IoT 示例代码。 
-- `requirements.txt`：运行示例所需依赖。 
-- `.github/workflows/ai-demo.yml`：GitHub Actions 工作流，自动执行代码生成。
+## 文件说明
+- `tech_spec.md`：技术方案
+- `business_case.md`：商业场景分析
+- `architecture.mmd`：Mermaid 架构图源文件
+- `data_pipeline.py`：Python 数据管道示例
+- `full_output.md`：AI 原始输出（用于调试）
 
-## 使用方式
-1. **手动触发**：进入 **Actions**，点击 `Demo GitHub Models` → `Run workflow`。 
-2. **推送即触发**：每次向 `main` 分支推送都会自动执行。
+## 如何使用
+1. 在 GitHub Actions 中触发工作流 `AI Generate IoT Content`（手动或定时）。
+2. 工作流运行结束后，可在 Artifacts 中下载生成的文件，或直接在仓库中查看。
 
-## 运行结果
-工作流运行结束后，日志里会直接输出 AI 生成的完整 Python 示例（包括 MQTT 客户端、异常检测、InfluxDB 写入示例）。
-
-> **注意**：此示例使用 `gpt-4o-mini`，在免费额度内每日可调用 120 次（视 GitHub 账号情况而定）。
+> 注意：此仓库使用 `gpt-4o-mini` 模型，在免费额度内每日可调用约 120 次。
