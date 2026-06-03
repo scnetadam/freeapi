@@ -9,8 +9,8 @@ github_client = OpenAI(
 )
 
 # Backup: AGNES-AI (user-provided key)
-AGNES_API_BASE = "https://api.agnes-ai.com/api/v1"
-AGNES_API_KEY = os.getenv("AGNES_API_KEY")  # sk-nch…FE9E
+AGNES_API_BASE = "https://apihub.agnes-ai.com/v1"
+AGNES_API_KEY = os.getenv("AGNES_API_KEY")
 
 agnes_client = OpenAI(
     base_url=AGNES_API_BASE,
@@ -38,7 +38,7 @@ def call_with_fallback(prompt, model="gpt-4o-mini", max_tokens=2000, temperature
     # Try AGNES-AI
     try:
         response = agnes_client.chat.completions.create(
-            model=model,  # same model name assumed; Agnes may support gpt-4o-mini
+            model="agnes-2.0-flash",  # AGNES-AI model
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
             temperature=temperature
