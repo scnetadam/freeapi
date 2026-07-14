@@ -1,13 +1,6 @@
 /**
- * 数据库入口 — 根据环境变量 DB_TYPE 自动选择实现
- * 生产环境 (PG) 使用 database.pg.js
- * 测试环境 (SQLite) 使用 database.sqlite.js
+ * 数据库入口
+ * 生产环境使用 PostgreSQL (database.pg.js)
  */
 
-const DB_TYPE = process.env.DB_TYPE || 'sqlite';
-
-if (DB_TYPE === 'pg') {
-  module.exports = require('./database.pg');
-} else {
-  module.exports = require('./database.sqlite');
-}
+module.exports = require('./database.pg');
