@@ -14,7 +14,7 @@ function getPool() {
     const database = process.env.PG_DATABASE || 'x402';
     const user = process.env.PG_USER || 'x402';
     const password = process.env.PG_PASSWORD || '***';
-    pool = new Pool({ host, port, database, user, password, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, ssl: { rejectUnauthorized: false } });
+    pool = new Pool({ host, port, database, user, password, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 });
   }
   return pool;
 }
