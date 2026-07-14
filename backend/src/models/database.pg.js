@@ -50,7 +50,7 @@ function getCredentials() {
   // 最后的 fallback（不推荐）
   cachedCreds = {
     secretId: 'AKIDhV8YloiQ2RdcPytbAXhgS1NWUGqCbxAh',
-    secretKey: '***'
+    secretKey: 'QejcMwQlppdSEtOiDcpttkQt9FBxY5d4'
   };
   console.log('[DB] WARNING: Using hardcoded credentials');
   return cachedCreds;
