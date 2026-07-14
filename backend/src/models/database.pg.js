@@ -9,7 +9,7 @@ let pool;
 
 function getPool() {
   if (!pool) {
-    const host = process.env.PG_HOST || 'x402-d1g9iojop685ea11a-1306394233.ap-shanghai.app.tcloudbase.com';
+    const host = process.env.PG_HOST || '29.126.137.25';
     const port = parseInt(process.env.PG_PORT || '5432');
     const database = process.env.PG_DATABASE || 'x402';
     const user = process.env.PG_USER || 'x402';
