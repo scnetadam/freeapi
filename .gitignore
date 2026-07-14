@@ -1,0 +1,8 @@
+node_modules/
+*.log
+src/gn_data.db
+src/gn_data.db-shm
+src/gn_data.db-wal
+.env
+keys/
+.DS_Store
