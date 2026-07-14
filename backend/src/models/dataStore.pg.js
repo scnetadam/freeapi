@@ -355,10 +355,10 @@ class DataMarketStore {
 }
 
 module.exports = {
-  UserStore: new UserStore(),
-  PaymentStore: new PaymentStore(),
-  WalletStore: new WalletStore(),
-  HashStore: new HashStore(),
-  NotaryStore: new NotaryStore(),
-  DataMarketStore: new DataMarketStore(),
+  userStore: new UserStore(),
+  paymentStore: new PaymentStore(),
+  walletStore: new WalletStore(),
+  hashStore: new HashStore(),
+  notaryStore: new NotaryStore(),
+  dataMarketStore: new DataMarketStore(),
 };
