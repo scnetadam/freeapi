@@ -88,10 +88,11 @@ async function query(sql, params = []) {
   }
 
   const client = getTcbClient();
+  // 确保 SQL 在 x402 数据库的 schema 中执行
+  const prefixedSql = finalSql.trim().toUpperCase().startsWith('SET ') ? finalSql : `SET search_path TO x402;\n${finalSql}`;
   const response = await client.ExecutePGSql({
     EnvId: process.env.TCB_ENV_ID || 'x402-d1g9iojop685ea11a',
-    Sql: finalSql,
-    Database: 'x402'
+    Sql: prefixedSql
   });
 
   return {
