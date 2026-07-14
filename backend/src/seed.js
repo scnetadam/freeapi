@@ -4,12 +4,16 @@
  */
 
 const { userStore, paymentStore, hashStore, walletStore, dataMarketStore } = require('./models/dataStore');
+const { initSchema } = require('./models/database.pg');
 
 const { TagEngine } = require('./tagEngine');
 const glmClient = require('./glmClient');
 
 function seed() {
   console.log('[Seed] 初始化演示数据...');
+  
+  // 先初始化数据库表结构
+  initSchema().catch(err => console.log('[Seed] Schema init error (may be already exists):', err.message));
 
   // 1. 创建用户 - 使用 openId 作为 userId，避免前后端 ID 不一致
   const u1 = userStore.create({ id: 'demo_c_001', openId: 'demo_c_001', nickName: '用户小明', role: 'C' });
