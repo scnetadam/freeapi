@@ -5,53 +5,45 @@
 
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 
 // 设置环境变量默认值
 process.env.DB_TYPE = process.env.DB_TYPE || 'pg';
 process.env.HTTP_PORT = process.env.HTTP_PORT || '80';
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
-// PostgreSQL 连接配置（从 CloudBase 环境变量读取）
+// PostgreSQL 连接配置
 process.env.PG_HOST = process.env.PG_HOST || process.env.TCB_PG_HOST || 'localhost';
 process.env.PG_PORT = process.env.PG_PORT || process.env.TCB_PG_PORT || '5432';
 process.env.PG_DATABASE = process.env.PG_DATABASE || process.env.TCB_PG_DATABASE || 'x402';
 process.env.PG_USER = process.env.PG_USER || process.env.TCB_PG_USER || 'x402';
 process.env.PG_PASSWORD = process.env.PG_PASSWORD || process.env.TCB_PG_PASSWORD || '';
-process.env.TENCENT_CLOUD_RUNENV = process.env.TENCENT_CLOUD_RUNENV || '';
 
 // 初始化数据库
 const { initSchema } = require('./src/models/database.pg');
 
-// 加载路由
+// ============ Express 应用 ============
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ============ 路由挂载 ============
-const authRoutes = require('./src/routes/auth');
-const bizRoutes = require('./src/routes/biz');
-const agentPayRoutes = require('./src/routes/agentPay');
-const aiRoutes = require('./src/routes/ai');
-const dataMarketRoutes = require('./src/routes/dataMarket');
-const governanceRoutes = require('./src/routes/governance');
-const hashRoutes = require('./src/routes/hash');
-
-app.use('/api/auth', authRoutes);
-app.use('/api/biz', bizRoutes);
-app.use('/api/agent-pay', agentPayRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/data-market', dataMarketRoutes);
-app.use('/api/governance', governanceRoutes);
-app.use('/api/hash', hashRoutes);
-
-// 支付宝支付路由
-const alipayBackend = require('./src/paymentBackends/alipay');
-app.use('/api/pay/alipay', alipayBackend);
+// 加载路由
+app.use('/api/auth', require('./src/routes/auth'));
+app.use('/api/biz', require('./src/routes/biz'));
+app.use('/api/agent-pay', require('./src/routes/agentPay'));
+app.use('/api/ai', require('./src/routes/ai'));
+app.use('/api/data-market', require('./src/routes/dataMarket'));
+app.use('/api/governance', require('./src/routes/governance'));
+app.use('/api/hash', require('./src/routes/hash'));
+app.use('/api/notary', require('./src/routes/notary'));
+app.use('/api/wallet', require('./src/routes/wallet'));
+app.use('/api/payment', require('./src/routes/payment'));
+app.use('/api/promo', require('./src/routes/promo'));
+app.use('/api/risk', require('./src/routes/risk'));
+app.use('/api/pay/alipay', require('./src/paymentBackends/alipay'));
 
 // 健康检查
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', mode: process.env.ALIPAY_SIMULATE === 'true' ? 'simulate' : 'real', db: 'postgresql' });
+  res.json({ status: 'ok', db: 'postgresql' });
 });
 
 app.get('/api/data', (req, res) => {
@@ -76,27 +68,21 @@ exports.main_handler = async (event, context) => {
     }
   }
 
-  // 将 SCF 事件转换为 Express 请求
   const { httpMethod, path: requestPath, headers, queryString, body, isBase64Encoded } = event;
-
   const reqPath = requestPath || '/';
   const method = httpMethod || 'GET';
 
-  // 构建请求/响应对象
   return new Promise((resolve, reject) => {
-    const { createServer } = require('http');
-    const server = createServer(app);
-
-    // 构造请求
+    const { request } = require('http');
     const options = {
       hostname: '127.0.0.1',
-      port: 80,
+      port: process.env.HTTP_PORT || 80,
       path: reqPath + (queryString ? '?' + queryString : ''),
-      method: method,
+      method,
       headers: headers || {},
     };
 
-    const req = require('http').request(options, (res) => {
+    const req = request(options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
@@ -110,11 +96,9 @@ exports.main_handler = async (event, context) => {
     });
 
     req.on('error', reject);
-
     if (body) {
       req.write(isBase64Encoded ? Buffer.from(body, 'base64') : body);
     }
-
     req.end();
   });
 };
