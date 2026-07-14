@@ -1,206 +1,158 @@
 /**
- * 龟钮印证 — 数据库连接 (PostgreSQL for CloudBase)
- * 使用 pg 连接 CloudBase PostgreSQL
+ * 龟钮印证 — 数据库连接 (PostgreSQL via CloudBase API)
+ * 使用 tencentcloud-sdk 调用 ExecutePGSql API
  */
 
-const { Pool } = require('pg');
+const tencentcloud = require('tencentcloud-sdk-nodejs-tcb');
+const fs = require('fs');
+const path = require('path');
 
-let pool;
+let tcbClient;
+let cachedCreds;
 
-function getPool() {
-  if (!pool) {
-    const host = process.env.PG_HOST || 'sh-postgres-r9phwypa.sql.tencentcdb.com';
-    const port = parseInt(process.env.PG_PORT || '20152');
-    const database = process.env.PG_DATABASE || 'x402';
-    const user = process.env.PG_USER || 'x402';
-    const password = process.env.PG_PASSWORD || '***';
-    pool = new Pool({ host, port, database, user, password, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 });
+function getCredentials() {
+  if (cachedCreds) return cachedCreds;
+  
+  // 优先从环境变量读取
+  if (process.env.TCB_SECRET_ID && process.env.TCB_SECRET_KEY) {
+    cachedCreds = { secretId: process.env.TCB_SECRET_ID, secretKey: process.env.TCB_SECRET_KEY };
+    return cachedCreds;
   }
-  return pool;
+  
+  // 尝试从 SecretKey.csv 文件读取
+  const csvPaths = [
+    '/app/SecretKey.csv',
+    path.join(__dirname, '..', '..', 'SecretKey.csv'),
+    path.join(__dirname, '..', '..', '..', 'SecretKey.csv'),
+  ];
+  
+  for (const csvPath of csvPaths) {
+    try {
+      if (fs.existsSync(csvPath)) {
+        const content = fs.readFileSync(csvPath, 'utf-8').trim();
+        const lines = content.split('\n');
+        if (lines.length >= 2) {
+          const vals = lines[1].split(',');
+          cachedCreds = { secretId: vals[0].trim(), secretKey: vals[1].trim() };
+          console.log('[DB] Loaded credentials from:', csvPath);
+          return cachedCreds;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  
+  // 最后的 fallback（不推荐）
+  cachedCreds = {
+    secretId: 'AKIDhV8YloiQ2RdcPytbAXhgS1NWUGqCbxAh',
+    secretKey: '***'
+  };
+  console.log('[DB] WARNING: Using hardcoded credentials');
+  return cachedCreds;
+}
+
+function getTcbClient() {
+  if (!tcbClient) {
+    const creds = getCredentials();
+    tcbClient = new (tencentcloud.tcb.v20180608.Client)({
+      credential: { secretId: creds.secretId, secretKey: creds.secretKey },
+      region: 'ap-shanghai',
+      profile: { httpProfile: { endpoint: 'tcb.tencentcloudapi.com' } },
+    });
+  }
+  return tcbClient;
 }
 
 async function query(sql, params = []) {
-  const client = await getPool().connect();
-  try {
-    const result = await client.query(sql, params);
-    return result;
-  } finally {
-    client.release();
+  let finalSql = sql;
+  if (params.length > 0) {
+    for (let i = 0; i < params.length; i++) {
+      const val = params[i];
+      let escaped;
+      if (val === null || val === undefined) {
+        escaped = 'NULL';
+      } else if (typeof val === 'number') {
+        escaped = val.toString();
+      } else if (typeof val === 'boolean') {
+        escaped = val ? 'true' : 'false';
+      } else {
+        escaped = "'" + val.toString().replace(/'/g, "''") + "'";
+      }
+      finalSql = finalSql.replace(new RegExp('\\$' + (i + 1) + '(?![0-9])', 'g'), escaped);
+    }
   }
+
+  const client = getTcbClient();
+  const response = await client.ExecutePGSql({
+    EnvId: process.env.TCB_ENV_ID || 'x402-d1g9iojop685ea11a',
+    Sql: finalSql
+  });
+
+  return {
+    rows: response.Rows ? response.Rows.map(r => {
+      try { return JSON.parse(r); } catch(e) { return r; }
+    }) : [],
+    rowCount: response.Rows ? response.Rows.length : 0,
+    fields: response.Columns ? response.Columns.map(c => ({ name: c })) : [],
+    command: 'SELECT',
+  };
 }
 
 async function getDb() {
-  return { query, getPool: () => pool };
+  return { query, getPool: () => ({}) };
 }
 
 async function initSchema() {
-  const sql = `
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      "openId" TEXT UNIQUE,
-      "nickName" TEXT DEFAULT '',
-      "avatarUrl" TEXT DEFAULT '',
-      platform TEXT DEFAULT 'alipay',
-      role TEXT DEFAULT 'C',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS payments (
-      id TEXT PRIMARY KEY,
-      "userId" TEXT,
-      amount REAL DEFAULT 0,
-      subject TEXT DEFAULT '',
-      description TEXT DEFAULT '',
-      "payerId" TEXT,
-      "payeeId" TEXT,
-      channel TEXT DEFAULT 'alipay',
-      status TEXT DEFAULT 'pending',
-      "tradeNo" TEXT DEFAULT '',
-      hash TEXT DEFAULT '',
-      nonce TEXT DEFAULT '',
-      "bFee" REAL DEFAULT 0,
-      "paidAt" TIMESTAMP,
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS wallet_transactions (
-      id TEXT PRIMARY KEY,
-      "userId" TEXT,
-      amount REAL DEFAULT 0,
-      type TEXT DEFAULT '',
-      description TEXT DEFAULT '',
-      "refId" TEXT DEFAULT '',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS wallets (
-      "userId" TEXT PRIMARY KEY,
-      balance REAL DEFAULT 0,
-      "dataEarnings" REAL DEFAULT 0,
-      "pendingBalance" REAL DEFAULT 0,
-      "promotionBalance" REAL DEFAULT 0,
-      "totalIncome" REAL DEFAULT 0,
-      "totalExpense" REAL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS hashes (
-      id TEXT PRIMARY KEY,
-      "txId" TEXT,
-      hash TEXT,
-      "dataDigest" TEXT,
-      "dataType" TEXT DEFAULT 'payment',
-      metadata TEXT DEFAULT '{}',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS notaries (
-      id TEXT PRIMARY KEY,
-      "txId" TEXT,
-      "userId" TEXT,
-      provider TEXT DEFAULT '',
-      "certificateNo" TEXT DEFAULT '',
-      status TEXT DEFAULT 'pending',
-      metadata TEXT DEFAULT '{}',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS data_products (
-      id TEXT PRIMARY KEY,
-      name TEXT DEFAULT '',
-      description TEXT DEFAULT '',
-      "dataType" TEXT DEFAULT '',
-      dimensions TEXT DEFAULT '[]',
-      price REAL DEFAULT 0,
-      "sampleSize" INTEGER DEFAULT 0,
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS data_orders (
-      id TEXT PRIMARY KEY,
-      "productId" TEXT,
-      "buyerId" TEXT,
-      amount REAL DEFAULT 0,
-      quantity INTEGER DEFAULT 1,
-      status TEXT DEFAULT 'pending',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS data_consents (
-      "userId" TEXT PRIMARY KEY,
-      scope TEXT DEFAULT 'none',
-      "updatedAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS agent_payments (
-      id TEXT PRIMARY KEY,
-      "agentId" TEXT,
-      "userId" TEXT,
-      amount REAL DEFAULT 0,
-      "useCase" TEXT DEFAULT '',
-      status TEXT DEFAULT 'pending',
-      report TEXT DEFAULT '',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS user_tags (
-      id SERIAL PRIMARY KEY,
-      "userId" TEXT,
-      key TEXT,
-      value TEXT,
-      source TEXT DEFAULT 'manual',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS governance_alerts (
-      id TEXT PRIMARY KEY,
-      "userId" TEXT,
-      level TEXT DEFAULT 'info',
-      type TEXT DEFAULT '',
-      message TEXT DEFAULT '',
-      status TEXT DEFAULT 'unread',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS promo_records (
-      id TEXT PRIMARY KEY,
-      "promoterId" TEXT,
-      campaign TEXT DEFAULT '',
-      "inviteCount" INTEGER DEFAULT 0,
-      reward REAL DEFAULT 0,
-      status TEXT DEFAULT 'active',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS guinieu_events (
-      event_id TEXT PRIMARY KEY,
-      type TEXT NOT NULL,
-      ts TEXT NOT NULL,
-      payload_json TEXT NOT NULL DEFAULT '{}',
-      payload_hash TEXT NOT NULL,
-      prev_event_id TEXT,
-      sig_method TEXT DEFAULT 'none',
-      sig TEXT,
-      status TEXT DEFAULT 'active',
-      reason TEXT,
-      created_by TEXT,
-      ref_tx_id TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_payments_user ON payments("userId");
-    CREATE INDEX IF NOT EXISTS idx_payments_payer ON payments("payerId");
-    CREATE INDEX IF NOT EXISTS idx_payments_payee ON payments("payeeId");
-    CREATE INDEX IF NOT EXISTS idx_wallet_tx_user ON wallet_transactions("userId");
-    CREATE INDEX IF NOT EXISTS idx_hashes_tx ON hashes("txId");
-    CREATE INDEX IF NOT EXISTS idx_notary_user ON notaries("userId");
-    CREATE INDEX IF NOT EXISTS idx_user_tags_user ON user_tags("userId");
-    CREATE INDEX IF NOT EXISTS idx_governance_alerts_user ON governance_alerts("userId");
-    CREATE INDEX IF NOT EXISTS idx_guinieu_prev ON guinieu_events(prev_event_id);
-    CREATE INDEX IF NOT EXISTS idx_guinieu_ref_tx ON guinieu_events(ref_tx_id);
-  `;
-
-  await query(sql);
-  console.log('[数据库] 表结构初始化完成');
+  const schemaSql = [
+    'CREATE TABLE IF NOT EXISTS users (',
+    '  id VARCHAR(64) PRIMARY KEY,',
+    '  open_id VARCHAR(128) UNIQUE,',
+    '  nick_name VARCHAR(128),',
+    '  avatar_url TEXT,',
+    '  role VARCHAR(16) DEFAULT \'C\',',
+    '  balance DECIMAL(20,8) DEFAULT 0,',
+    '  created_at TIMESTAMP DEFAULT NOW(),',
+    '  updated_at TIMESTAMP DEFAULT NOW()',
+    ');',
+    'CREATE TABLE IF NOT EXISTS payment_records (',
+    '  id SERIAL PRIMARY KEY,',
+    '  trade_no VARCHAR(64) UNIQUE,',
+    '  user_id VARCHAR(64),',
+    '  amount DECIMAL(20,8),',
+    '  channel VARCHAR(16),',
+    '  status VARCHAR(16) DEFAULT \'pending\',',
+    '  created_at TIMESTAMP DEFAULT NOW()',
+    ');',
+    'CREATE TABLE IF NOT EXISTS hash_records (',
+    '  id SERIAL PRIMARY KEY,',
+    '  hash VARCHAR(128) UNIQUE,',
+    '  user_id VARCHAR(64),',
+    '  content_type VARCHAR(32),',
+    '  file_name VARCHAR(256),',
+    '  file_size BIGINT,',
+    '  created_at TIMESTAMP DEFAULT NOW()',
+    ');',
+    'CREATE TABLE IF NOT EXISTS wallet_operations (',
+    '  id SERIAL PRIMARY KEY,',
+    '  user_id VARCHAR(64),',
+    '  amount DECIMAL(20,8),',
+    '  type VARCHAR(16),',
+    '  description TEXT,',
+    '  created_at TIMESTAMP DEFAULT NOW()',
+    ');',
+    'CREATE TABLE IF NOT EXISTS data_market_products (',
+    '  id SERIAL PRIMARY KEY,',
+    '  name VARCHAR(256),',
+    '  description TEXT,',
+    '  price DECIMAL(20,8),',
+    '  owner_id VARCHAR(64),',
+    '  status VARCHAR(16) DEFAULT \'active\',',
+    '  created_at TIMESTAMP DEFAULT NOW()',
+    ');'
+  ].join('\n');
+  await query(schemaSql);
+  console.log('[DB] Schema initialized via CloudBase API');
 }
 
-module.exports = { getDb, query, initSchema };
+module.exports = { query, getDb, getPool: () => ({}), initSchema };
