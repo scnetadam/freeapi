@@ -350,4 +350,8 @@ class DataMarketStore {
 
   async getConsent(userId) {
     const r = await query('SELECT * FROM data_consents WHERE "userId" = $1', [userId]);
-    return r.rows[0] || { userId, sco
+    return r.rows[0] || { userId, scope: 'none' };
+  }
+}
+
+module.exports = DataStorePG;
