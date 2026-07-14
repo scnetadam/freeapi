@@ -90,7 +90,8 @@ async function query(sql, params = []) {
   const client = getTcbClient();
   const response = await client.ExecutePGSql({
     EnvId: process.env.TCB_ENV_ID || 'x402-d1g9iojop685ea11a',
-    Sql: finalSql
+    Sql: finalSql,
+    Database: 'x402'
   });
 
   return {
