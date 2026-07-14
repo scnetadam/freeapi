@@ -354,4 +354,11 @@ class DataMarketStore {
   }
 }
 
-module.exports = DataStorePG;
+module.exports = {
+  UserStore: new UserStore(),
+  PaymentStore: new PaymentStore(),
+  WalletStore: new WalletStore(),
+  HashStore: new HashStore(),
+  NotaryStore: new NotaryStore(),
+  DataMarketStore: new DataMarketStore(),
+};
