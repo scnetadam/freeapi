@@ -4,7 +4,7 @@ WORKDIR /app
 
 # 复制 backend 目录到工作目录
 COPY backend/package.json backend/package-lock.json* ./
-RUN npm ci --only=production
+RUN npm install --omit=dev --ignore-scripts
 
 COPY backend/src/ ./src/
 
