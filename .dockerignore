@@ -1,0 +1,15 @@
+Dockerfile
+.dockerignore
+node_modules
+npm-debug.log
+.git
+.env
+certs
+gn_data.db
+gn_data.db-shm
+gn_data.db-wal
+stderr.log
+stdout.log
+test-*.js
+test-*.mjs
+test-*.json
