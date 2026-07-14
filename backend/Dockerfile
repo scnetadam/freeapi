@@ -12,6 +12,10 @@ RUN npm ci --only=production && apk del build-base python3
 # 复制源码
 COPY src/ ./src/
 
+# CloudBase API 凭据（临时方案，后续移到环境变量）
+ENV TCB_SECRET_ID=AKIDhV…bxAh
+ENV TCB_SECRET_KEY=***
+
 # 暴露端口
 EXPOSE 80
 
