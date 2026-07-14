@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "axios": "^1.6.0",
-    "better-sqlite3": "^12.11.1",
     "pg": "^8.13.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
