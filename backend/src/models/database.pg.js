@@ -16,7 +16,11 @@ function getCredentials() {
   // 优先从环境变量读取
   if (process.env.TCB_SECRET_ID && process.env.TCB_SECRET_KEY) {
     cachedCreds = { secretId: process.env.TCB_SECRET_ID, secretKey: process.env.TCB_SECRET_KEY };
+    console.log('[DB] Using credentials from environment variables');
     return cachedCreds;
+  } else {
+    console.log('[DB] TCB_SECRET_ID:', process.env.TCB_SECRET_ID ? 'set' : 'NOT SET');
+    console.log('[DB] TCB_SECRET_KEY:', process.env.TCB_SECRET_KEY ? 'set' : 'NOT SET');
   }
   
   // 尝试从 SecretKey.csv 文件读取

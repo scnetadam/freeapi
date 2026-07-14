@@ -12,10 +12,6 @@ RUN npm ci --only=production && apk del build-base python3
 # 复制源码
 COPY src/ ./src/
 
-# 创建 CloudBase API 凭据文件
-RUN echo "SecretId,SecretKey" > /app/SecretKey.csv && \
-    echo "AKIDhV…bxAh,***" >> /app/SecretKey.csv
-
 # 暴露端口
 EXPOSE 80
 
