@@ -9,12 +9,12 @@ let pool;
 
 function getPool() {
   if (!pool) {
-    const host = process.env.PG_HOST || '29.126.137.25';
-    const port = parseInt(process.env.PG_PORT || '5432');
+    const host = process.env.PG_HOST || 'sh-postgres-r9phwypa.sql.tencentcdb.com';
+    const port = parseInt(process.env.PG_PORT || '20152');
     const database = process.env.PG_DATABASE || 'x402';
     const user = process.env.PG_USER || 'x402';
     const password = process.env.PG_PASSWORD || '***';
-    pool = new Pool({ host, port, database, user, password, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 });
+    pool = new Pool({ host, port, database, user, password, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, ssl: { rejectUnauthorized: false } });
   }
   return pool;
 }
