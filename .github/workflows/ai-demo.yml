@@ -1,0 +1,28 @@
+name: AI Generate IoT Content
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'  # 每天北京时间8点运行 (UTC 0点)
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python=v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install openai paho-mqtt
+          
+      - name: Generate IoT Content
+        run: python generate_code.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
